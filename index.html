@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PulseSim - NIAS Paramedic Engine</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        nias: {
+                            green: '#005a36', // NIAS Dark Green
+                            yellow: '#ffcc00', // Battenburg Yellow
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-slate-900 text-slate-100 h-screen flex flex-col font-sans overflow-hidden">
+
+    <!-- Top Navigation / Status Bar -->
+    <header class="bg-nias-green text-white p-4 flex justify-between items-center shadow-md border-b-4 border-nias-yellow">
+        <div class="flex items-center gap-3">
+            <h1 class="text-2xl font-bold tracking-wider">PULSE<span class="text-nias-yellow">SIM</span></h1>
+            <span class="bg-slate-800 text-xs px-2 py-1 rounded">Scenario: Sepsis (Adult)</span>
+        </div>
+        <div class="flex items-center gap-6">
+            <div class="text-xl font-mono bg-slate-800 px-4 py-2 rounded border border-slate-600">
+                Time: <span id="timer-display" class="text-nias-yellow font-bold">10:00</span>
+            </div>
+            <button id="btn-end" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded transition">
+                End Handover
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Dashboard Grid -->
+    <main class="flex-1 grid grid-cols-12 gap-4 p-4 overflow-hidden">
+        
+        <!-- Left Panel: Chat Interface (8 cols) -->
+        <section class="col-span-8 bg-slate-800 rounded-lg flex flex-col border border-slate-700 shadow-lg">
+            <!-- Scene Brief -->
+            <div class="p-4 bg-slate-700 rounded-t-lg border-b border-slate-600 text-sm text-slate-300">
+                <strong>Dispatch:</strong> 68-year-old male, generally unwell, hot to touch. Found in living room. <br>
+                <strong>On Arrival:</strong> Patient is slumped on the sofa, breathing rapidly, looks flushed and confused.
+            </div>
+            
+            <!-- Chat Feed -->
+            <div id="chat-feed" class="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
+                <!-- Chat messages will inject here -->
+            </div>
+
+            <!-- Input Area -->
+            <div class="p-4 bg-slate-700 rounded-b-lg flex gap-2">
+                <input type="text" id="chat-input" class="flex-1 bg-slate-900 text-white border border-slate-600 rounded px-4 py-2 focus:outline-none focus:border-nias-yellow" placeholder="Ask the patient a question or perform an action...">
+                <button id="btn-send" class="bg-nias-yellow text-slate-900 font-bold px-6 py-2 rounded hover:bg-yellow-500 transition">
+                    Speak
+                </button>
+            </div>
+        </section>
+
+        <!-- Right Panel: Vitals & Actions (4 cols) -->
+        <section class="col-span-4 flex flex-col gap-4">
+            
+            <!-- Vitals Monitor -->
+            <div class="bg-black rounded-lg border-2 border-slate-700 p-4 shadow-xl">
+                <h2 class="text-nias-yellow font-bold text-sm mb-3 uppercase tracking-widest border-b border-slate-800 pb-1">Vitals Monitor</h2>
+                <div class="grid grid-cols-2 gap-4 text-center">
+                    <div class="bg-slate-900 p-3 rounded">
+                        <div class="text-emerald-500 text-xs font-bold">HR (bpm)</div>
+                        <div id="vital-hr" class="text-3xl font-mono text-emerald-400">115</div>
+                    </div>
+                    <div class="bg-slate-900 p-3 rounded">
+                        <div class="text-blue-500 text-xs font-bold">SpO2 (%)</div>
+                        <div id="vital-spo2" class="text-3xl font-mono text-blue-400">92</div>
+                    </div>
+                    <div class="bg-slate-900 p-3 rounded">
+                        <div class="text-yellow-500 text-xs font-bold">BP (mmHg)</div>
+                        <div id="vital-bp" class="text-3xl font-mono text-yellow-400">88/50</div>
+                    </div>
+                    <div class="bg-slate-900 p-3 rounded">
+                        <div class="text-white text-xs font-bold">RR (/min)</div>
+                        <div id="vital-rr" class="text-3xl font-mono text-white">26</div>
+                    </div>
+                    <div class="bg-slate-900 p-3 rounded">
+                        <div class="text-purple-500 text-xs font-bold">Temp (°C)</div>
+                        <div id="vital-temp" class="text-3xl font-mono text-purple-400">39.1</div>
+                    </div>
+                    <div class="bg-slate-900 p-3 rounded">
+                        <div class="text-orange-500 text-xs font-bold">BM (mmol/L)</div>
+                        <div id="vital-bm" class="text-3xl font-mono text-orange-400">---</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Interventions Menu -->
+            <div class="bg-slate-800 rounded-lg flex-1 border border-slate-700 p-4 flex flex-col">
+                <h2 class="text-slate-100 font-bold text-sm mb-3 uppercase tracking-widest border-b border-slate-700 pb-1">Interventions</h2>
+                <div class="flex-1 overflow-y-auto pr-2 flex flex-col gap-2">
+                    <button class="intervention-btn bg-slate-700 hover:bg-slate-600 text-left px-3 py-2 rounded text-sm transition" data-action="oxygen">Administer Oxygen (15L NRBM)</button>
+                    <button class="intervention-btn bg-slate-700 hover:bg-slate-600 text-left px-3 py-2 rounded text-sm transition" data-action="iv-access">Gain IV Access</button>
+                    <button class="intervention-btn bg-slate-700 hover:bg-slate-600 text-left px-3 py-2 rounded text-sm transition" data-action="fluids">Administer 500ml NaCl</button>
+                    <button class="intervention-btn bg-slate-700 hover:bg-slate-600 text-left px-3 py-2 rounded text-sm transition" data-action="bm-check">Check Blood Glucose</button>
+                    <button class="intervention-btn bg-slate-700 hover:bg-slate-600 text-left px-3 py-2 rounded text-sm transition" data-action="ecg">Perform 12-Lead ECG</button>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script src="engine.js"></script>
+</body>
+</html>
