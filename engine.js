@@ -22,6 +22,7 @@ const elChatFeed = document.getElementById('chat-feed');
 const elChatInput = document.getElementById('chat-input');
 const elBtnSend = document.getElementById('btn-send');
 const interventionBtns = document.querySelectorAll('.intervention-btn');
+const btnEnd = document.getElementById('btn-end');
 
 // Vitals Elements
 const elVitalHR = document.getElementById('vital-hr');
@@ -36,6 +37,7 @@ function initScenario() {
     startTimer();
     startPhysiologyEngine();
     addChatSystemMessage("Scenario Started. You have 10 minutes to assess and stabilize the patient.");
+    updateVitalsUI();
 }
 
 // --- TIMER LOGIC ---
@@ -52,6 +54,15 @@ function startTimer() {
         let seconds = timeRemaining % 60;
         elTimer.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
     }, 1000);
+}
+
+// Optional: End Scenario Button
+if (btnEnd) {
+    btnEnd.addEventListener('click', () => {
+        clearInterval(timerInterval);
+        clearInterval(physiologyInterval);
+        addChatSystemMessage("Scenario ended early. Commencing Handover.");
+    });
 }
 
 // --- PHYSIOLOGY ENGINE ---
@@ -78,7 +89,10 @@ interventionBtns.forEach(btn => {
 });
 
 function handleIntervention(action, label) {
-    if (patient.interventions.includes(action)) return; // Prevent spamming
+    if (patient.interventions.includes(action)) {
+        addChatSystemMessage(`You already performed: ${label}`);
+        return; // Prevent spamming the exact same intervention
+    }
     
     patient.interventions.push(action);
     addChatSystemMessage(`Action Performed: ${label}`);
@@ -101,17 +115,19 @@ function handleIntervention(action, label) {
 
 function updateVitalsUI() {
     elVitalHR.textContent = patient.hr;
-    elVitalBP.textContent = `${patient.bpSys}/${Math.floor(patient.bpSys * 0.6)}`; // Fake Diastolic for demo
+    elVitalBP.textContent = `${patient.bpSys}/${Math.floor(patient.bpSys * 0.6)}`; // Simulated Diastolic
     elVitalSpO2.textContent = patient.spo2;
     elVitalRR.textContent = patient.rr;
     elVitalTemp.textContent = patient.temp;
     elVitalBM.textContent = patient.bm ? patient.bm : '---';
 
-    // Flash red if critical
+    // Flash red if critical (BP < 60 or HR > 150)
     if (patient.bpSys < 60 || patient.hr > 150) {
         elVitalHR.parentElement.classList.add('animate-pulse', 'bg-red-900');
+        elVitalBP.parentElement.classList.add('animate-pulse', 'bg-red-900');
     } else {
         elVitalHR.parentElement.classList.remove('animate-pulse', 'bg-red-900');
+        elVitalBP.parentElement.classList.remove('animate-pulse', 'bg-red-900');
     }
 }
 
@@ -129,32 +145,56 @@ function handleUserChat() {
     appendMessage('paramedic', text);
     elChatInput.value = '';
 
-    // 2. Send to AI (Placeholder for API fetch)
-    // Here you will pass `text` and `patient` object to your AI endpoint
-    setTimeout(() => {
-        generateAIResponse(text);
-    }, 1000);
+    // 2. Send to AI Server
+    generateAIResponse(text);
 }
 
-function generateAIResponse(userText) {
-    // MOCK AI RESPONSE - Replace with actual fetch to OpenAI/Gemini
-    let response = "I don't feel well... I'm so cold but sweating.";
-    if (userText.toLowerCase().includes('pain')) {
-        response = "My stomach hurts a bit, but mostly I just feel weak.";
+// --- LIVE API CONNECTION ---
+async function generateAIResponse(userText) {
+    try {
+        // Show typing indicator while we wait for the server
+        appendMessage('patient', '...'); 
+        
+        // Connect to your local Node.js server
+        const response = await fetch('http://localhost:3000/api/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                userMessage: userText, 
+                patientState: patient // Sending the live physiology state
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`Server error: ${response.status}`);
+        }
+
+        const data = await response.json();
+        
+        // Remove typing indicator and append real response
+        elChatFeed.lastChild.remove(); 
+        appendMessage('patient', data.reply);
+
+    } catch (error) {
+        // Handle server being down or errors
+        elChatFeed.lastChild.remove();
+        appendMessage('patient', '*No response...* (Is the server running?)');
+        console.error("Failed to connect to AI server:", error);
     }
-    appendMessage('patient', response);
 }
 
+// --- UI HELPERS ---
 function appendMessage(sender, text) {
     const msgDiv = document.createElement('div');
     const isParamedic = sender === 'paramedic';
     
+    // Using NIAS color scheme styling
     msgDiv.className = `max-w-[80%] p-3 rounded-lg ${isParamedic ? 'bg-nias-green text-white self-end rounded-br-none' : 'bg-slate-600 text-slate-100 self-start rounded-bl-none'}`;
     
     msgDiv.innerHTML = `<span class="block text-xs font-bold mb-1 opacity-70">${isParamedic ? 'You (Paramedic)' : 'Patient'}</span>${text}`;
     
     elChatFeed.appendChild(msgDiv);
-    elChatFeed.scrollTop = elChatFeed.scrollHeight;
+    elChatFeed.scrollTop = elChatFeed.scrollHeight; // Auto-scroll to bottom
 }
 
 function addChatSystemMessage(text) {
