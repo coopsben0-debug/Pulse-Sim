@@ -1,14 +1,14 @@
 {
   "name": "pulse-sim",
   "version": "1.0.0",
-  "description": "PulseSim is an AI-driven simulation engine for paramedics. It offers real-time physiological modeling where a patient's vitals and condition dynamically evolve based on user treatments or delays. Practice history-taking, ABCDE assessments, and critical interventions across multiple medical and trauma scenarios to master pre-hospital emergency care.",
+  "description": "PulseSim is an AI-driven simulation engine for paramedics.",
   "main": "server.js",
   "type": "module",
   "scripts": {
     "start": "node server.js"
   },
   "dependencies": {
-    "@google/generative-ai": "^0.2.1",
+    "@google/generative-ai": "^0.24.1",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.18.3"
