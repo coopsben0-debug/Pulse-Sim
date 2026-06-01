@@ -9,14 +9,13 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Initialize Gemini API (Make sure you get a free API key from Google AI Studio)
+// Initialize Gemini API
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 app.post('/api/chat', async (req, res) => {
     try {
         const { userMessage, patientState } = req.body;
 
-        // The System Prompt holding the patient persona and rules
         const systemPrompt = `
 You are Arthur, a 68-year-old male patient. You have no medical training.
 You are currently experiencing an uncompensated sepsis episode secondary to a UTI.
@@ -36,15 +35,13 @@ RULES:
 5. React dynamically to treatments (e.g., if fluids were given and BP rises, say you feel a tiny bit less dizzy).
         `;
 
-        // Combine prompt and send to Gemini
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
         const result = await model.generateContent([
             systemPrompt,
             `Paramedic says: "${userMessage}"\nRespond in character:`
         ]);
         
         const responseText = result.response.text();
-        
         res.json({ reply: responseText });
 
     } catch (error) {
@@ -54,6 +51,4 @@ RULES:
 });
 
 const PORT = 3000;
-app.listen(PORT, () => {
-    console.log(`PulseSim AI Server running on http://localhost:${PORT}`);
-});
+app.listen(PORT, () => console.log(`PulseSim AI Server running on http://localhost:${PORT}`));
