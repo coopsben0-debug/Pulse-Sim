@@ -142,7 +142,8 @@ async function generateAIResponse(userText) {
     try {
         appendMessage('patient', '...'); 
         
-        const response = await fetch('http://localhost:3000/api/chat', {
+        // Changed destination to Render Cloud Endpoint
+        const response = await fetch('https://pulse-sim.onrender.com/api/chat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ userMessage: userText, patientState: patient })
