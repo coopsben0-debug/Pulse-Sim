@@ -1,54 +1,62 @@
-import express from 'express';
-import cors from 'cors';
-import dotenv from 'dotenv';
-import { GoogleGenerativeAI } from '@google/generative-ai';
-
-dotenv.config();
+const express = require('express');
+const cors = require('cors');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
+require('dotenv').config();
 
 const app = express();
+const PORT = process.env.PORT || 3000;
+
+// Enable CORS so your GitHub Pages frontend can talk to this Render backend safely
 app.use(cors());
 app.use(express.json());
 
-// Initialize Gemini API
+// Initialize the Gemini API client using your environment variable
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+
+// Clinical System Prompt to set Arthur's persona and scenario parameters
+const SYSTEM_INSTRUCTION = `
+You are Arthur, a 68-year-old male patient suffering from severe, worsening sepsis. 
+You are currently confused, feeling incredibly cold, shivering, and short of breath. 
+Keep your responses brief, realistic, and reflective of a critically ill patient. 
+Do not break character or give medical explanations out of character.
+`;
 
 app.post('/api/chat', async (req, res) => {
     try {
         const { userMessage, patientState } = req.body;
 
-        const systemPrompt = `
-You are Arthur, a 68-year-old male patient. You have no medical training.
-You are currently experiencing an uncompensated sepsis episode secondary to a UTI.
-Current location: Your living room sofa.
+        if (!userMessage) {
+            return res.status(400).json({ error: "Missing userMessage in request body" });
+        }
 
-CURRENT PATIENT VITALS (Hidden from you, but you feel their effects):
-- Heart Rate: ${patientState.hr}
-- Blood Pressure: ${patientState.bpSys}/${patientState.bpDia}
-- SpO2: ${patientState.spo2}%
-- Temp: ${patientState.temp}°C
+        // Use the recommended model for standard text simulation workflows
+        const model = genAI.getGenerativeModel({ 
+            model: "gemini-1.5-flash",
+            systemInstruction: SYSTEM_INSTRUCTION
+        });
 
-RULES:
-1. DO NOT use medical jargon. Do not diagnose yourself.
-2. Keep answers to 1-2 short sentences. You are tired and breathless.
-3. If asked about pain, you have mild lower back pain and burning when urinating for 3 days.
-4. If HR > 130 or SpO2 < 85%, act confused, frightened, and struggle to form full sentences.
-5. React dynamically to treatments (e.g., if fluids were given and BP rises, say you feel a tiny bit less dizzy).
-        `;
+        // Contextualize the model with the current real-time physiological metrics from the frontend engine
+        const contextualPrompt = `
+[CURRENT PATIENT VITALS: HR: ${patientState?.hr || 115}, BP: ${patientState?.bpSys || 88}/${patientState?.bpDia || 50}, RR: ${patientState?.rr || 26}, SpO2: ${patientState?.spo2 || 92}%, Temp: ${patientState?.temp || 39.1}°C]
+The paramedic says: "${userMessage}"
+`;
 
-        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-        const result = await model.generateContent([
-            systemPrompt,
-            `Paramedic says: "${userMessage}"\nRespond in character:`
-        ]);
-        
-        const responseText = result.response.text();
+        const result = await model.generateContent(contextualPrompt);
+        const responseText = result.response.text().trim();
+
         res.json({ reply: responseText });
 
     } catch (error) {
-        console.error("AI Error:", error);
-        res.status(500).json({ reply: "*Groans...* (Patient is unresponsive or connection failed)" });
+        console.error("Error processing simulation chat routing:", error);
+        res.status(500).json({ error: "Internal Server Error", details: error.message });
     }
 });
 
-const PORT = 3000;
-app.listen(PORT, () => console.log(`PulseSim AI Server running on http://localhost:${PORT}`));
+// Root check endpoint to easily test if the server is awake via browser click
+app.get('/', (req, res) => {
+    res.send("PulseSim AI Server is running and live.");
+});
+
+app.listen(PORT, () => {
+    console.log(`PulseSim AI Server running smoothly on port ${PORT}`);
+});
